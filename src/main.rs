@@ -1,5 +1,5 @@
 use std::{
-    io::{stdout, Write},
+    io::{stdout, Stdout, Write},
     thread,
     time::Duration,
 };
@@ -13,28 +13,56 @@ use crossterm::{
 
 fn main() -> Result<()> {
     let mut stdout = stdout();
-    execute!(
+    let mut buffer = Buffer {
         stdout,
-        EnterAlternateScreen,
-        terminal::Clear(terminal::ClearType::All)
-    )?;
+        column: 0,
+        row: 0,
+    };
+    buffer.init();
 
-    for y in 0..40 {
-        for x in 0..150 {
-            if (y == 0 || y == 40 - 1) || (x == 0 || x == 150 - 1) {
-                // in this loop we are more efficient by not flushing the buffer.
-                queue!(
-                    stdout,
-                    cursor::MoveTo(x, y),
-                    style::PrintStyledContent("█".magenta())
-                )?;
-            }
-        }
-    }
-    stdout.flush()?;
+    buffer.insert('h');
+    buffer.insert('e');
+    buffer.insert('l');
+    buffer.insert('l');
+    buffer.insert('o');
+
+    buffer.render();
     thread::sleep(Duration::from_secs(1));
 
-    execute!(stdout, LeaveAlternateScreen)?;
+    buffer.quit();
 
     Ok(())
+}
+
+struct Buffer {
+    stdout: Stdout,
+    column: u16,
+    row: u16,
+}
+
+impl Buffer {
+    fn init(&mut self) {
+        execute!(
+            &self.stdout,
+            EnterAlternateScreen,
+            terminal::Clear(terminal::ClearType::All)
+        );
+    }
+
+    fn render(&mut self) {
+        self.stdout.flush();
+    }
+
+    fn insert(&mut self, input_char: char) {
+        execute!(
+            &self.stdout,
+            cursor::MoveTo(self.column, self.row),
+            style::Print(input_char)
+        );
+        self.column = &self.column + 1;
+    }
+
+    fn quit(self) {
+        execute!(&self.stdout, LeaveAlternateScreen);
+    }
 }
