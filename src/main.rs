@@ -5,14 +5,16 @@ use std::{
 };
 
 use crossterm::{
-    cursor, execute, queue,
+    cursor,
+    event::{poll, read, Event, KeyCode, KeyEvent},
+    execute, queue,
     style::{self, Stylize},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
     Result,
 };
 
 fn main() -> Result<()> {
-    let mut stdout = stdout();
+    let stdout = stdout();
     let mut buffer = Buffer {
         stdout,
         column: 0,
@@ -20,12 +22,31 @@ fn main() -> Result<()> {
     };
     buffer.init();
 
-    buffer.insert('h');
-    buffer.insert('e');
-    buffer.insert('l');
-    buffer.insert('l');
-    buffer.insert('o');
+    loop {
+        if poll(Duration::from_millis(100))? {
+            let event = read()?;
+            if let Event::Key(key) = event {
+                // キーコードと修飾キーに分解する
+                let code = key.code;
+                let modifiers = key.modifiers;
 
+                // キーコードに応じて処理を分岐する
+                match code {
+                    KeyCode::Backspace => println!("Backspace pressed"),
+                    KeyCode::Char(c) => buffer.insert(c),
+                    _ => println!("Other key pressed: {:?}", code),
+                }
+
+                if !modifiers.is_empty() {
+                    println!("Modifiers: {:?}", modifiers);
+                }
+
+                if code == KeyCode::Esc {
+                    break;
+                }
+            }
+        }
+    }
     buffer.render();
     thread::sleep(Duration::from_secs(1));
 
